@@ -1,0 +1,234 @@
+---
+title: "Problem Set 2"
+author: "Amber Geiger"
+format: html
+editor: visual
+---
+
+---
+title: "Problem Set 2"
+author: "Amber"
+date: 10/14/2026
+format:
+html:
+toc: true
+embed-resources: true
+---
+
+```         
+**GitHub repo:** <https://github.com/amberjgeiger/EC-422_PS2_Geiger-Amber>
+```
+
+## Data
+
+Our data series consists of monthly unemployment rates for the whole United States, as well as the states of Oregon, California, Texas, and New York. It came directly from FRED, or the Federal Reserve Economic Data database, starting from January 1st, 1976 to October, 2025.
+
+```{r}
+library(tidyverse)
+library(knitr)
+
+unemp_raw <- read_rds("data/unemp_raw.rds")
+
+head(unemp_raw)
+```
+
+## Wrangling
+
+```{r}
+library(knitr)
+```
+
+Note: Installed the knitr package to use the kable() function. Used digits = 2 for rounding precision and presentation.
+
+```{r}
+unemp <- unemp_raw |>
+  rename(unemployment_rate = price) |>
+  mutate(
+    region = case_when(
+      symbol == "UNRATE" ~ "United States",
+      symbol == "ORUR" ~ "Oregon",
+      symbol == "CAUR" ~ "California",
+      symbol == "TXUR" ~ "Texas",
+      symbol == "NYUR" ~ "New York"
+    )
+  ) |>
+  arrange(region, date) |>
+  group_by(region) |>
+  mutate(
+    unemployment_rate = replace(
+      unemployment_rate,
+      date == as.Date("2025-10-01"),
+      unemployment_rate[date == as.Date("2025-09-01")]
+    ),
+    unemployment_rate_change =
+      unemployment_rate - lag(unemployment_rate)
+  ) |>
+  ungroup()
+
+unemp_summary <- unemp |>
+  group_by(region) |>
+  summarize(
+    mean_rate = mean(unemployment_rate, na.rm = TRUE),
+    min_rate = min(unemployment_rate, na.rm = TRUE),
+    max_rate = max(unemployment_rate, na.rm = TRUE)
+  )
+
+unemp_recent <- unemp |>
+  filter(date >= as.Date("2015-01-01"))
+
+unemp_recent_summary <- unemp_recent |>
+  group_by(region) |>
+  summarize(
+    mean_rate = mean(unemployment_rate, na.rm = TRUE),
+    min_rate = min(unemployment_rate, na.rm = TRUE),
+    max_rate = max(unemployment_rate, na.rm = TRUE)
+  )
+```
+
+Note: Did this to avoid the mentioned FRED data issues as advised in announcement.
+
+### Table 1: Full Unemployment Data
+
+Table 1 gives us the mean, minimum, and maximum unemployment rates for each region (US, Oregon, California, Texas, and New York) across the full data period, meaning from January 1976 to October 2025.
+
+```{r}
+kable(unemp_summary, digits = 2)
+```
+
+### Table 2: Unemployment Date January 2015 and Onward
+
+Table 2 was filtered to give us the mean, minimum, and maximum unemployment rates for each region (US, Oregon, California, Texas, and New York) from January 2015 onward.
+
+```{r}
+kable(unemp_recent_summary, digits = 2)
+```
+
+### Table 3: Largest Monthly Increases in Unemployment
+
+Table 3 excluded data observations in 2020, due to the pandemic having an impact on that data otherwise unforseen. It additionally shows the largest month to month increases in unemployment rate for each region (US, Oregon, California, Texas, and New York).
+
+```{r}
+unemp_top_increases_no_covid <- unemp |>
+  filter(format(date, "%Y") != "2020") |>
+  slice_max(
+    order_by = unemployment_rate_change,
+    n = 5,
+    with_ties = TRUE
+  )
+
+kable(unemp_top_increases_no_covid, digits = 2)
+```
+
+### Table 4: Largest Monthly Decreases in Unemployment
+
+Table 4 also excluded data observations in 2020, due to the pandemic having an impact on that data otherwise unforseen. However, it instead shows the largest month to month *decreases* in unemployment rate for each region (US, Oregon, California, Texas, and New York).
+
+```{r}
+unemp_top_decreases_no_covid <- unemp |>
+  filter(format(date, "%Y") != "2020") |>
+  slice_min(
+    order_by = unemployment_rate_change,
+    n = 5,
+    with_ties = TRUE
+  )
+
+kable(unemp_top_decreases_no_covid, digits = 2)
+```
+
+## Visualization
+
+### Plot 1: Unemployment Rates Overtime (Full Data)
+
+Plot 1 compares the monthly unemployment rates across each region (US, Oregon, California, Texas, and New York) across the entire data period, meaning from January 1976 to October 2025. Different colors represent a different region, e.g. red for California, showing trends in the unemployment rates overtime.
+
+```{r}
+ggplot(unemp, aes(x = date, y = unemployment_rate, color = region)) +
+  geom_line() +
+  labs(
+    title = "Unemployment Rates by Region Overtime",
+    x = "Date",
+    y = "Unemployment Rate (Percent)",
+    color = "Region"
+  ) +
+  theme_minimal()
+```
+
+### Plot 2: Unemployment Rates by Region
+
+Plot 2 still compares the monthly unemployment rates across each region (US, Oregon, California, Texas, and New York) across the entire data period, meaning from January 1976 to October 2025. However, it uses different panels to illustrate each region's trends, rather than an overlapping view seen in Plot 1.
+
+```{r}
+ggplot(unemp, aes(x = date, y = unemployment_rate, color = region)) +
+  geom_line() +
+  facet_wrap(~ region) +
+  labs(
+    title = "Unemployment Rates by Region Overtime",
+    x = "Date",
+    y = "Unemployment Rate (Percent)"
+  ) +
+  theme_minimal()
+```
+
+### Plot 3: The Mean Unemployment Rates by Region
+
+Plot 3 still compares the monthly unemployment rates across each region (US, Oregon, California, Texas, and New York) across the entire data period, meaning from January 1976 to October 2025. However, it utilizes a bar chart instead of a line graph, ordered by the mean values of each region's unemployment rates.
+
+```{r}
+ggplot(
+  unemp_summary,
+  aes(
+    x = fct_reorder(region, mean_rate),
+    y = mean_rate,
+    fill = region
+  )
+) +
+  geom_col() +
+  labs(
+    title = "Mean Unemployment Rates by Region",
+    x = "Region",
+    y = "Mean Unemployment Rate (Percent)"
+  ) +
+  theme_minimal()
+```
+
+### Plot 4: Great Recession vs Covid Pandemic
+
+Plot 4 compares the monthly unemployment rates across each region (US, Oregon, California, Texas, and New York) during the Great Recession defined as between 2007-2010, and the Covid Pandemic, defined as 2019-2022. The reason I choose to explore these two periods was because I was curious how they compare in unemployment rates given their differing elements and origins. A financial crisis vs global pandemic are differing shocks but both have devastating consequences.
+
+```{r}
+unemp_recessions <- unemp |>
+  filter(
+    (date >= as.Date("2007-01-01") &
+       date <= as.Date("2010-12-01")) |
+      (date >= as.Date("2019-01-01") &
+         date <= as.Date("2022-12-01"))
+  ) |>
+  mutate(
+    period = if_else(
+      date < as.Date("2011-01-01"),
+      "Great Recession (2007-2010)",
+      "COVID-19 (2019-2022)"
+    )
+  )
+
+ggplot(
+  unemp_recessions,
+  aes(x = date, y = unemployment_rate, color = region)
+) +
+  geom_line() +
+  facet_wrap(~ period) +
+  labs(
+    title = "Unemployment During the Great Recession and COVID-19",
+    x = "Date",
+    y = "Unemployment Rate (Percent)",
+    color = "Region"
+  ) +
+  theme_minimal()
+```
+
+## Reflection
+
+In past R Studio Classes, I often did my problem sets all in the Quarto document, not starting with an original script. This process helped me with understanding organization and cleanliness within my code, especially though really taking the time to separate directory, script, writeup, and utilize console vs terminal. Code seems easier to track, cleaner, and makes more sense when I look it over! It was intuitive once I started to get to the table making and plotting, as it was about getting the general format down and assessing the different command needed based on what you want to show. My biggest struggles have always been file organization and proper set up, so I'm glad this problem set helped me identify strategies to combat that, but I also need to build up my own confidence.
+
+Note on AI Use: As allowed in class, I used AI as a coding assistant when I got stuck (mainly with the FRED data –\> to Quarto document), and to double check my proper saving tecqniques and git push. I can testify that I took the time to understand what I coded and what each thing in this document does. Thank you.\
+\

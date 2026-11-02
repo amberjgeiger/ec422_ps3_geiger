@@ -1,0 +1,8 @@
+"0","retail_nsa |>"
+"0","  autoplot(sales) +"
+"0","  labs("
+"0","    title = ""U.S. Retail Sales (NSA)"","
+"0","    x = NULL,"
+"0","    y = ""Dollars (Millions)"""
+"0","  ) +"
+"0","  theme_minimal()"

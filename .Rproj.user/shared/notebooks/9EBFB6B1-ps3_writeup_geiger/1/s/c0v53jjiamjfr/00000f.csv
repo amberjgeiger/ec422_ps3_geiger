@@ -1,0 +1,8 @@
+"0","can_gas |>"
+"0","  autoplot(Volume) +"
+"0","  labs("
+"0","    title = ""Canadian Natural-Gas Production"","
+"0","    x = NULL,"
+"0","    y = ""Cubic Meters (Billions)"""
+"0","  ) +"
+"0","  theme_minimal()"

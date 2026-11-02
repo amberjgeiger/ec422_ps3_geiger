@@ -1,0 +1,3 @@
+"0","retail_nsa <- retail_ts |>"
+"0","  filter(series_id == ""RSAFSNA"") |>"
+"0","  mutate(log_sales = log(sales))"
