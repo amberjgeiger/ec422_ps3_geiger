@@ -503,8 +503,72 @@ can_gas_fit |>
   #1 TSLM(log_volume ~ trend() + season())   7774.         0
 
 #Answer to 4.4c: Resisudals do not look like just white noise, there is visible structure in the lags.
-# With a reported p-value of 0, which is > the significance level 0.05, we reject the null hypothesis menaing residuals still have autocorrelation. 
-
-
+# With a reported p-value of 0, which is < the significance level 0.05, we reject the null hypothesis menaing residuals still have autocorrelation. 
 
 # Part 5 ---------------------------
+
+#5.1a
+gas_cv_fc <- can_gas |>
+  select(Month, Volume) |>
+  stretch_tsibble(.init = 240, .step = 1) |>
+  model(snaive = SNAIVE(Volume),
+        tslm   = TSLM(log(Volume) ~ trend() + season())) |>
+  forecast(h = 1)
+
+gas_cv_fc |>
+  accuracy(can_gas, measures = list(MAE = MAE, RMSE = RMSE))
+
+# A tibble: 2 × 4
+#.model .type   MAE  RMSE
+#<chr>  <chr> <dbl> <dbl>
+#1 snaive Test  0.562 0.702
+#2 tslm   Test  4.01  4.36 
+
+#Answer to 5.1a: The first forecast evaluated was in January, 1980, and the last forecast evaluated was in Feburary, 2005 (a month after I was born!).
+#The seasonal random walk had MAE = 0.562 and RMSE = 0.702, while the linear trend + dummies model had MAE = 4.01 and RMSE = 4.36. 
+#Seasonal random walk has smaller forecast errors, so both metric show SNAIVE was more accurate.
+
+#5.2a
+errs <- gas_cv_fc |>
+  as_tibble() |>
+  left_join(as_tibble(can_gas) |> select(Month, actual = Volume),
+            by = "Month") |>
+  mutate(e = actual - .mean) |>
+  select(Month, .model, e) |>
+  pivot_wider(names_from = .model, values_from = e) |>
+  na.omit()
+
+forecast::dm.test(errs$snaive, errs$tslm, h = 1, power = 1)
+
+#Diebold-Mariano Test
+
+#data:  errs$snaiveerrs$tslm
+#DM = -31.278, Forecast horizon = 1, Loss function power = 1, p-value < 2.2e-16
+#alternative hypothesis: two.sided
+
+#Answer to 5.2a: The DM statistic is -31.278, and the p-value is very small, under 0. 
+# The p-value is < the significance level of 0.05, thus we reject the null hypothesis the both models have equal forecast accuracy.
+# -31.278 means that the SNAIVE has smaller forecast errors than the tslm
+
+#5.3a
+gas_roll_fc <- can_gas |>
+  select(Month, Volume) |>
+  slide_tsibble(.size = 240, .step = 1) |>
+  model(
+    snaive = SNAIVE(Volume),
+    tslm = TSLM(log(Volume) ~ trend() + season())
+  ) |>
+  forecast(h = 1)
+
+gas_roll_fc |>
+  accuracy(can_gas, measures = list(MAE = MAE, RMSE = RMSE))
+
+# A tibble: 2 × 4
+#.model .type   MAE  RMSE
+#<chr>  <chr> <dbl> <dbl>
+#1 snaive Test  0.562 0.702
+#2 tslm   Test  2.09  2.42 
+
+#Answer to 5.3a: The seasonal random walk had MAE = 0.562 and RMSE = 0.702 (same as 5.1a), while the linear trend + dummies model had MAE = 2.09 and RMSE = 2.42. 
+#TSLM changed while SNAIVE remained the same, showing that likely TSLM benefits from more recent data while older data used in expanding windows bogged it down.
+#Comparing this to the fitted values in 4.4b, tslm struggles with capturing trends within a whole time period, and seems to perform better with recent data.
