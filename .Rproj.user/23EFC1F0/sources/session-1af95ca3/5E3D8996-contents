@@ -267,7 +267,7 @@ retail_nsa |>
   labs(
     title = "U.S. Retail Sales (NSA)",
     x = NULL,
-    y = "Millions of dollars"
+    y = "Dollars (Millions)"
   ) +
   theme_minimal()
 
@@ -336,6 +336,175 @@ retail_ts |>
 #Answer to 3.3: Month to month, the NSA is wayyy nosier than the SA series with huger swings and spaced out spikes poiting to seasonal behavior. NSA has not been seasnonall adjusted, while SA has adjusted to removed calender effects, which are effects due to number of days in a month, and general holiday patterns. This is similar to 2.7c, where SA was smoother than NSA, which had generally more flutating. 
 
 # Part 4 ---------------------------
+
+#4.1a
+retail_ts |>
+  filter(series_id == "RSAFSNA") |>
+  gg_season(sales) +
+  labs(
+    title = "Seasonal Pattern in NSA Retail Sales",
+    y = "Dollars (millions)"
+  ) +
+  theme_minimal()
+
+#i like how seasonal plots are rainbow :)
+
+#4.1b
+retail_ts |>
+  filter(series_id == "RSAFS") |>
+  gg_season(sales) +
+  labs(
+    title = "Seasonal Pattern in SA Retail Sales",
+    y = "Dollars (millions)"
+  ) +
+  theme_minimal()
+
+#Answer to 4.1b: The SA plot is straighter than the NSA plot due to it's adjustments, which bends upwards towards the end and has more pronounced ups and downs. 
+
+#4.1c
+can_gas |>
+  gg_season(log_volume) +
+  labs(
+    title = "Seasonal Pattern in Canadian Natural Gas Production",
+    y = "Log of Production Volume"
+  ) +
+  theme_minimal()
+
+#Answer to 4.1c: The lines seem to bend down, revealing that the tails ends such as January and December having higher production most likely due to those being colder months requiring heat, while predicatlby, the summer months such as June, July, and August have the least since the are the warmest.
+
+#4.2
+can_gas |>
+  gg_subseries(log_volume) +
+  labs(
+    title = "Subseries Plot: Canadian Gas Production",
+    y = "log(Volume)"
+  )
+
+#4.3
+install.packages("seasonal")
+
+#4.3a
+retail_nsa_x13 <- retail_ts |>
+  filter(series_id == "RSAFSNA") |>
+  model(x13 = X_13ARIMA_SEATS(sales)) |>
+  components()
+
+retail_nsa_x13 |> autoplot()
+
+#Answer to 4.3a: The highest seasonal factor hits at 1.2 or 20% above trend, and I believe that month is meant to be December, which makes sense because of the holiday. The seasonality swings however seem fairly consistant overtime.
+
+#4.3b:
+  sa_compare <- retail_nsa_x13 |>
+  as_tibble() |>
+  select(Month, mine = season_adjust) |>
+  left_join(
+    retail_ts |>
+      filter(series_id == "RSAFS") |>
+      as_tibble() |>
+      transmute(Month, census = sales),
+    by = "Month"
+  ) |>
+  mutate(pct_diff = 100 * (log(mine) - log(census)))
+
+sa_compare |>
+  ggplot(aes(x = Month, y = pct_diff)) +
+  geom_line() +
+  labs(
+    title = "X-13 Seasonal Adjustment Minus the Census Bureau's",
+    x = NULL, y = "Difference (%)"
+  ) +
+  theme_minimal()
+
+#Answer to 4.3b: It seems to match the official one pretty fairly, staying within -0.5 to 0.5 in differences. The exception being a few years after 2020, which makes sense since sales were affected during the pandemic and years after due to finicial difficulties. 
+
+#4.4
+
+#4.4a
+can_gas_fit <- can_gas |>
+  model(TSLM(log_volume ~ trend() + season()))
+
+report(can_gas_fit)
+
+#Series: log_volume 
+#Model: TSLM 
+
+#Residuals:
+#Min        1Q    Median        3Q       Max 
+#-0.985307 -0.096451 -0.004525  0.131639  0.470564 
+
+#Coefficients:
+#Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)     1.150e+00  4.142e-02  27.761  < 2e-16 ***
+#trend()         3.973e-03  6.886e-05  57.692  < 2e-16 ***
+#season()year2  -1.121e-01  5.229e-02  -2.144  0.03245 *  
+#season()year3  -5.238e-02  5.258e-02  -0.996  0.31963    
+#season()year4  -1.334e-01  5.258e-02  -2.537  0.01146 *  
+#season()year5  -1.738e-01  5.258e-02  -3.305  0.00101 ** 
+#season()year6  -2.512e-01  5.258e-02  -4.777 2.30e-06 ***
+#season()year7  -2.300e-01  5.258e-02  -4.374 1.47e-05 ***
+#season()year8  -2.193e-01  5.258e-02  -4.170 3.56e-05 ***
+#season()year9  -2.274e-01  5.258e-02  -4.325 1.83e-05 ***
+#season()year10 -1.253e-01  5.258e-02  -2.383  0.01753 *  
+#season()year11 -7.781e-02  5.258e-02  -1.480  0.13956    
+#season()year12  7.202e-03  5.258e-02   0.137  0.89111    
+---
+  #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+  #Residual standard error: 0.2508 on 529 degrees of freedom
+  #Multiple R-squared: 0.8652,	Adjusted R-squared: 0.8622
+  #F-statistic:   283 on 12 and 529 DF, p-value: < 2.22e-16
+
+  can_gas_fit |>
+  tidy() |>
+  select(term, estimate, std.error, statistic, p.value) |>
+  knitr::kable(digits = 3)
+
+#|term           | estimate| std.error| statistic| p.value|
+#|:--------------|--------:|---------:|---------:|-------:|
+#|(Intercept)    |    1.150|     0.041|    27.761|   0.000|
+#|trend()        |    0.004|     0.000|    57.692|   0.000|
+#|season()year2  |   -0.112|     0.052|    -2.144|   0.032|
+#|season()year3  |   -0.052|     0.053|    -0.996|   0.320|
+#|season()year4  |   -0.133|     0.053|    -2.537|   0.011|
+#|season()year5  |   -0.174|     0.053|    -3.305|   0.001|
+#|season()year6  |   -0.251|     0.053|    -4.777|   0.000|
+#|season()year7  |   -0.230|     0.053|    -4.374|   0.000|
+#|season()year8  |   -0.219|     0.053|    -4.170|   0.000|
+#|season()year9  |   -0.227|     0.053|    -4.325|   0.000|
+#|season()year10 |   -0.125|     0.053|    -2.383|   0.018|
+#|season()year11 |   -0.078|     0.053|    -1.480|   0.140|
+#|season()year12 |    0.007|     0.053|     0.137|   0.891|
+  
+#Answer to 4.4a: Coefficent is 0.003973 multipled by 100 because of LOG = 0.3973% growth rate for gas. 
+#June with 4.777 has the most significant seasonal effect.
+
+#4.4b
+can_gas_fit |>
+  augment() |>
+  ggplot(aes(x = Month)) +
+  geom_line(aes(y = log_volume, color = "Actual")) +
+  geom_line(aes(y = .fitted, color = "Fitted")) +
+  labs(title = "Linear Trend + Seasonal Dummies Fit: Canadian Gas Production",
+       y = "log(Volume)", color = NULL) +
+  theme_minimal()
+
+#Answer to 4.4b: The actual is curved, so the fitted line misses most of the dara, only capturing the center and tail end for the most part.  
+
+#4.4c
+can_gas_fit |> gg_tsresiduals()
+
+can_gas_fit |>
+  augment() |>
+  features(.innov, ljung_box, lag = 24)
+
+# A tibble: 1 × 3
+#.model                                lb_stat lb_pvalue
+#<chr>                                   <dbl>     <dbl>
+  #1 TSLM(log_volume ~ trend() + season())   7774.         0
+
+#Answer to 4.4c: Resisudals do not look like just white noise, there is visible structure in the lags.
+# With a reported p-value of 0, which is > the significance level 0.05, we reject the null hypothesis menaing residuals still have autocorrelation. 
+
 
 
 # Part 5 ---------------------------
