@@ -3,7 +3,7 @@
     "path": "C:/Users/amber/OneDrive/Desktop/EC 422/EC 422_PS3_Geiger, Amber/ps3_writeup_geiger.qmd",
     "project_path": "ps3_writeup_geiger.qmd",
     "type": "quarto_markdown",
-    "hash": "3187720956",
+    "hash": "3745680845",
     "contents": "",
     "dirty": false,
     "created": 1793600727005.0,
@@ -19,14 +19,14 @@
         "scrollLine": "0",
         "docOutlineVisible": "1",
         "rmdVisualCollapsedChunks": "",
-        "rmdVisualModeLocation": "14207:20596"
+        "rmdVisualModeLocation": "171:0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1793605623,
+    "lastKnownWriteTime": 1793605781,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1793605623813,
+    "last_content_update": 1793605781939,
     "read_only": false,
     "read_only_alternatives": []
 }
