@@ -237,6 +237,103 @@ retail_ts |>
 
 # Part 3 ---------------------------
 
+#3.1
+
+#Answer to 3.1a: No, the seasonal swings do not get larger as the series grows, the swings seem the change in a different way. Generally, the graph is increasing and most swings seem unrelated to a seasonal explantion.
+
+#3.1b
+can_gas <- can_gas |>
+  mutate(log_volume = log(Volume))
+
+can_gas |>
+  autoplot(log_volume) +
+  labs(
+    title = "Canadian Natural Gas Production (Log)",
+    x = NULL,
+    y = "Log of Production Volume"
+  ) +
+  theme_minimal()
+
+#Answer to 3.1b: The shape became more curved, and seasonal swings became more consistant. The log didn't make the series fully linear because you can still sees changes in growth rate at the same periods as the original plot. I think it helped with variance but maybe has some other factors that logging can't fully solve. 
+
+#3.1c
+retail_nsa <- retail_ts |>
+  filter(series_id == "RSAFSNA") |>
+  mutate(log_sales = log(sales))
+
+#level
+retail_nsa |>
+  autoplot(sales) +
+  labs(
+    title = "U.S. Retail Sales (NSA)",
+    x = NULL,
+    y = "Millions of dollars"
+  ) +
+  theme_minimal()
+
+#log
+retail_nsa |>
+  autoplot(log_sales) +
+  labs(
+    title = "U.S. Retail Sales (NSA, Log)",
+    x = NULL,
+    y = "Log of Sales"
+  ) +
+  theme_minimal()
+
+#Answer to 3.1c:i think the case is stronger because the logged version seems to make the season swings seen in the level plot more consttant overtime.
+
+#3.2
+
+#3.2a:
+can_gas <- can_gas |>
+  mutate(
+    growth_direct = 100 * difference(Volume) / lag(Volume),
+    growth_logdiff = 100 * difference(log_volume)
+  )
+
+can_gas |>
+  autoplot(growth_direct) +
+  labs(
+    title = "Monthly Growth Rate of Canadian Gas Production",
+    x = NULL,
+    y = "Growth Rate (%)"
+  ) +
+  theme_minimal()
+
+#other approach
+can_gas <- can_gas |>
+  mutate(
+    growth_gap = abs(growth_direct - growth_logdiff)
+  )
+
+can_gas |>
+  autoplot(growth_gap) +
+  labs(
+    title = "Difference Between Growth Rate Calculations",
+    x = NULL,
+    y = "Absolute Difference (Percentage Points)"
+  ) +
+  theme_minimal()
+
+#Anwser to 3.2a: Mostly accurate, but there are certain months especially around January that still less accurate due to bigger changes in production.
+
+#3.3
+
+retail_ts <- retail_ts |>
+  group_by_key() |>
+  mutate(growth_mom = 100 * difference(log(sales))) |>
+  ungroup()
+
+retail_ts |>
+  autoplot(growth_mom) +
+  labs(
+    title = "Month-over-Month Growth: SA vs. NSA Retail Sales",
+    x = NULL, y = "Growth rate (%)", color = NULL
+  ) +
+  theme_minimal()
+
+#Answer to 3.3: Month to month, the NSA is wayyy nosier than the SA series with huger swings and spaced out spikes poiting to seasonal behavior. NSA has not been seasnonall adjusted, while SA has adjusted to removed calender effects, which are effects due to number of days in a month, and general holiday patterns. This is similar to 2.7c, where SA was smoother than NSA, which had generally more flutating. 
 
 # Part 4 ---------------------------
 
